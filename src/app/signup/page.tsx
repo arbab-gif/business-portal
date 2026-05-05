@@ -202,7 +202,7 @@ export default function SignupPage() {
                       <p className="text-[13px] font-[500] text-[#222222]">
                         {logoDragging ? 'Drop to upload' : 'Click or drag & drop'}
                       </p>
-                      <p className="text-[12px] text-[#929292]">PNG, JPG or SVG · Max 2 MB</p>
+                      <p className="text-[12px] text-[#929292]">PNG, JPG or SVG · 512×512px recommended · Max 2 MB</p>
                     </div>
                   </div>
                 )}
@@ -248,12 +248,16 @@ export default function SignupPage() {
                   onChange={set('phone')}
                   error={errors.phone}
                 />
-                <Input
-                  label="Address"
-                  placeholder="Street, City, Postcode"
-                  value={form.address}
-                  onChange={set('address')}
-                />
+                <div className="sm:col-span-2">
+                  <label className="block text-[13px] font-[500] text-[#3f3f3f] mb-1.5">Address</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Street, City, Postcode"
+                    value={form.address}
+                    onChange={set('address')}
+                    className="w-full px-3 py-2.5 text-[14px] border border-[#dddddd] rounded-[10px] resize-none focus:outline-none focus:border-[#6C3BAA] bg-white placeholder-[#b0b0b0] transition-colors"
+                  />
+                </div>
               </div>
             </div>
 
@@ -266,18 +270,26 @@ export default function SignupPage() {
                 <p className="text-[13px] font-[500] text-[#3f3f3f] mb-2">Brand Colour</p>
                 <div className="p-4 border border-[#ebebeb] rounded-[12px] bg-[#fafafa] space-y-3">
 
-                  {/* Preview swatch */}
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-[10px] flex-shrink-0 shadow-sm"
-                      style={{ backgroundColor: brandColor }}
-                    />
-                    <div className="flex-1">
-                      <p className="text-[13px] font-[500] text-[#222222]">Selected colour</p>
-                      <p className="text-[12px] text-[#929292] font-mono">{brandColor.toUpperCase()}</p>
+                  {/* Presets + Custom button */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap gap-2 flex-1">
+                      {PRESET_COLORS.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => applyColor(c)}
+                          title={c}
+                          className="w-7 h-7 rounded-full cursor-pointer transition-transform hover:scale-110 flex-shrink-0"
+                          style={{
+                            backgroundColor: c,
+                            outline: brandColor.toLowerCase() === c.toLowerCase() ? `3px solid ${c}` : 'none',
+                            outlineOffset: 2,
+                          }}
+                        />
+                      ))}
                     </div>
                     {/* Native colour picker trigger */}
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       <button
                         type="button"
                         onClick={() => colorInputRef.current?.click()}
@@ -293,24 +305,6 @@ export default function SignupPage() {
                         className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                       />
                     </div>
-                  </div>
-
-                  {/* Presets */}
-                  <div className="flex flex-wrap gap-2">
-                    {PRESET_COLORS.map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => applyColor(c)}
-                        title={c}
-                        className="w-7 h-7 rounded-full cursor-pointer transition-transform hover:scale-110 flex-shrink-0"
-                        style={{
-                          backgroundColor: c,
-                          outline: brandColor.toLowerCase() === c.toLowerCase() ? `3px solid ${c}` : 'none',
-                          outlineOffset: 2,
-                        }}
-                      />
-                    ))}
                   </div>
 
                   {/* Hex input */}
