@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* ── Airbnb Design System ── */
+
+  /* Colors */
+  --color-primary: #6C3BAA;
+  --color-primary-active: #e00b41;
+  --color-primary-disabled: #ffd1da;
+  --color-primary-error: #c13515;
+  --color-primary-error-hover: #b32505;
+  --color-luxe: #460479;
+  --color-plus: #92174d;
+  --color-ink: #222222;
+  --color-body-text: #3f3f3f;
+  --color-muted: #6a6a6a;
+  --color-muted-soft: #929292;
+  --color-hairline: #dddddd;
+  --color-hairline-soft: #ebebeb;
+  --color-border-strong: #c1c1c1;
+  --color-canvas: #ffffff;
+  --color-surface-soft: #f7f7f7;
+  --color-surface-card: #ffffff;
+  --color-surface-strong: #f2f2f2;
+  --color-on-primary: #ffffff;
+  --color-on-dark: #ffffff;
+  --color-legal-link: #428bff;
+  --color-star-rating: #222222;
+  --color-scrim: rgba(0, 0, 0, 0.5);
+
+  /* Status colors (extended for admin) */
+  --color-success: #008a05;
+  --color-success-bg: #e6f4e6;
+  --color-warning: #c47a00;
+  --color-warning-bg: #fff3cd;
+  --color-danger: #c13515;
+  --color-danger-bg: #fde8e3;
+  --color-info: #0066cc;
+  --color-info-bg: #e3f0ff;
+
+  /* Border radius */
+  --radius-none: 0px;
+  --radius-xs: 4px;
+  --radius-sm: 12px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-base: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  --spacing-section: 64px;
+
+  /* Typography */
+  --font-cereal: "'Airbnb Cereal VF', Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif";
+  --font-sans: "'Airbnb Cereal VF', Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif";
+}
+
+/* Base reset */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: #f7f7f7;
+  color: #222222;
+  font-family: 'Airbnb Cereal VF', Circular, -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Elevation */
+.shadow-card {
+  box-shadow: rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px 0, rgba(0,0,0,0.1) 0 4px 8px 0;
+}
+.shadow-dropdown {
+  box-shadow: rgba(0,0,0,0.12) 0 2px 16px 0, rgba(0,0,0,0.04) 0 0 0 1px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f7f7f7; }
+::-webkit-scrollbar-thumb { background: #dddddd; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #c1c1c1; }
