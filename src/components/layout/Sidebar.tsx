@@ -60,7 +60,7 @@ export function Sidebar() {
             <ShieldCheck size={16} className="text-white" />
           </div>
           <div>
-            <p className="text-[16px] font-[600] text-white leading-[1.25]">Admin Portal</p>
+            <p className="text-[16px] font-[600] text-white leading-[1.25]">Super Admin</p>
             <p className="text-[11px] text-white/50 leading-[1.18]">Business Management</p>
           </div>
         </div>
@@ -95,15 +95,6 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-3 pb-4 border-t border-white/10 pt-3">
-        <div className="flex items-center gap-3 px-3 py-2.5 mb-1">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-[13px] font-[600]">
-            A
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-[500] text-white truncate">Super Admin</p>
-            <p className="text-[11px] text-white/50 truncate">admin@portal.com</p>
-          </div>
-        </div>
         <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-[13px] text-white/60 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">
           <LogOut size={15} />
           Sign out

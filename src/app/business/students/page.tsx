@@ -10,11 +10,13 @@ import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { Input, Select } from '@/components/ui/Input';
 import { SearchBar } from '@/components/ui/Table';
 import { useBusinessAuth } from '@/lib/BusinessAuthStore';
-import { STUDENTS, Student } from '@/lib/data';
+import { useBilling } from '@/lib/BillingStore';
+import { STUDENTS, STUDENT_PROGRESS, Student } from '@/lib/data';
 import Link from 'next/link';
 import {
   UserPlus, UserX, UserCheck, Trash2, Users,
   CheckCircle, XCircle, Pencil, KeyRound, Eye,
+  CreditCard, AlertTriangle,
 } from 'lucide-react';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 
@@ -39,7 +41,8 @@ const emptyForm: NewStudentForm = { name: '', email: '', phone: '', vehicleType:
 
 export default function BusinessStudentsPage() {
   const router = useRouter();
-  const { currentBusiness } = useBusinessAuth();
+  const { currentBusiness, hasPaymentMethod, setPaymentMethodAdded } = useBusinessAuth();
+  const { addStudentCharge } = useBilling();
 
   // Local mutable copy
   const [students, setStudents] = useState<Student[]>(
@@ -48,6 +51,12 @@ export default function BusinessStudentsPage() {
 
   const [filter, setFilter]               = useState<Filter>('all');
   const [search, setSearch]               = useState('');
+
+  // Payment gate
+  const [paymentOpen, setPaymentOpen]     = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false); // true = open add-student after payment
+  const [paymentForm, setPaymentForm]     = useState({ cardHolder: '', cardNumber: '', expiry: '', cvv: '' });
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   // Modals
   const [addOpen, setAddOpen]             = useState(false);
@@ -70,6 +79,40 @@ export default function BusinessStudentsPage() {
   const [resetLoading, setResetLoading]   = useState(false);
 
   const [toast, setToast]                 = useState<{ msg: string; ok: boolean } | null>(null);
+
+  /* ─── payment helpers ─── */
+  const formatCardNumber = (val: string) =>
+    val.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
+
+  const formatExpiry = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 4);
+    return digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+  };
+
+  const handleOpenAddStudent = () => {
+    if (!hasPaymentMethod) {
+      setPaymentPending(true);
+      setPaymentOpen(true);
+    } else {
+      setAddOpen(true);
+      setAddForm(emptyForm);
+      setAddErrors({});
+    }
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaymentLoading(true);
+    await new Promise(r => setTimeout(r, 1000));
+    setPaymentLoading(false);
+    setPaymentMethodAdded();
+    setPaymentOpen(false);
+    showToast('Payment method added successfully.');
+    if (paymentPending) {
+      setPaymentPending(false);
+      setTimeout(() => { setAddOpen(true); setAddForm(emptyForm); setAddErrors({}); }, 300);
+    }
+  };
 
   /* ─── helpers ─── */
   const showToast = (msg: string, ok = true) => {
@@ -123,6 +166,7 @@ export default function BusinessStudentsPage() {
       createdAt: new Date().toISOString().split('T')[0],
     };
     setStudents(prev => [newStudent, ...prev]);
+    addStudentCharge(newStudent.name);
     setAddLoading(false);
     setAddOpen(false);
     setAddForm(emptyForm);
@@ -177,11 +221,12 @@ export default function BusinessStudentsPage() {
         title="Student Management"
         subtitle={`${counts.active} active · ${counts.suspended} suspended`}
         actions={
-          <Button size="sm" icon={<UserPlus size={14} />} onClick={() => { setAddOpen(true); setAddForm(emptyForm); setAddErrors({}); }}>
+          <Button size="sm" icon={<UserPlus size={14} />} onClick={handleOpenAddStudent}>
             Add Student
           </Button>
         }
       />
+
 
       <div className="p-6 space-y-5">
 
@@ -230,15 +275,31 @@ export default function BusinessStudentsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#ebebeb] bg-[#f7f7f7]">
-                  {['Student', 'Vehicle Type', 'Mock Avg', 'Hazard Score', 'Status', 'Actions'].map(h => (
+                  {['Student', 'Vehicle Type', 'Mock Test', 'Hazard', 'Category', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-5 py-3 text-left text-[12px] font-[700] text-[#6a6a6a] uppercase tracking-[0.32px]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((s, i) => {
-                  const avg = s.mockTestAvg ?? 0;
-                  const barColor = avg >= 80 ? '#008a05' : avg >= 60 ? '#c47a00' : '#c13515';
+                  const prog = STUDENT_PROGRESS.find(p => p.studentId === s.id);
+                  const mockAvg = s.mockTestAvg ?? null;
+                  const hazardAvg = s.hazardScore ?? null;
+                  const catAvg = prog?.categories.length
+                    ? Math.round(prog.categories.reduce((sum, c) => sum + Math.round((c.correct / c.total) * 100), 0) / prog.categories.length)
+                    : null;
+                  const barCol = (v: number) => v >= 80 ? '#008a05' : v >= 60 ? '#c47a00' : '#c13515';
+
+                  const MiniBar = ({ value }: { value: number | null }) =>
+                    value != null ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 bg-[#f2f2f2] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${value}%`, backgroundColor: barCol(value) }} />
+                        </div>
+                        <span className="text-[12px] font-[500] w-7 text-right flex-shrink-0" style={{ color: barCol(value) }}>{value}%</span>
+                      </div>
+                    ) : <span className="text-[13px] text-[#929292]">—</span>;
+
                   return (
                     <tr key={s.id} className={`${i < filtered.length - 1 ? 'border-b border-[#ebebeb]' : ''} hover:bg-[#f7f7f7] transition-colors`}>
 
@@ -258,22 +319,14 @@ export default function BusinessStudentsPage() {
                       {/* Vehicle Type */}
                       <td className="px-5 py-4 text-[14px] text-[#3f3f3f]">{s.vehicleType}</td>
 
-                      {/* Mock Avg */}
-                      <td className="px-5 py-4">
-                        {s.mockTestAvg != null ? (
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 h-1.5 bg-[#f2f2f2] rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${avg}%`, backgroundColor: barColor }} />
-                            </div>
-                            <span className="text-[13px] font-[500]" style={{ color: barColor }}>{avg}%</span>
-                          </div>
-                        ) : <span className="text-[13px] text-[#929292]">—</span>}
-                      </td>
+                      {/* Mock Test */}
+                      <td className="px-5 py-4"><MiniBar value={mockAvg} /></td>
 
                       {/* Hazard */}
-                      <td className="px-5 py-4 text-[14px] text-[#3f3f3f]">
-                        {s.hazardScore != null ? `${s.hazardScore}%` : '—'}
-                      </td>
+                      <td className="px-5 py-4"><MiniBar value={hazardAvg} /></td>
+
+                      {/* Category */}
+                      <td className="px-5 py-4"><MiniBar value={catAvg} /></td>
 
                       {/* Status */}
                       <td className="px-5 py-4">
@@ -302,6 +355,96 @@ export default function BusinessStudentsPage() {
           )}
         </div>
       </div>
+
+      {/* ── Payment Method Modal ── */}
+      <Modal
+        open={paymentOpen}
+        onClose={() => { if (!paymentLoading) { setPaymentOpen(false); setPaymentPending(false); } }}
+        title="Add Payment Method"
+        size="sm"
+        footer={
+          <>
+            <button
+              onClick={() => { setPaymentOpen(false); setPaymentPending(false); }}
+              disabled={paymentLoading}
+              className="px-5 py-2.5 text-[14px] font-[500] text-[#222222] border border-[#dddddd] rounded-[12px] hover:bg-[#f7f7f7] cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              form="payment-form"
+              type="submit"
+              disabled={paymentLoading}
+              className="px-5 py-2.5 text-[14px] font-[500] text-white bg-[#6C3BAA] hover:bg-[#5a3190] rounded-[12px] cursor-pointer disabled:opacity-60 transition-colors"
+            >
+              {paymentLoading ? 'Saving…' : 'Save Card'}
+            </button>
+          </>
+        }
+      >
+        <form id="payment-form" onSubmit={handlePaymentSubmit} className="space-y-4" noValidate>
+          <div className="flex items-start gap-3 p-3.5 bg-[#ede5f7] border border-[#6C3BAA]/20 rounded-[12px]">
+            <AlertTriangle size={15} className="text-[#6C3BAA] flex-shrink-0 mt-0.5" />
+            <p className="text-[12px] text-[#6C3BAA]/80 leading-[1.6]">
+              {paymentPending
+                ? 'A payment method is required before adding students. Your card will be charged based on your active plan.'
+                : 'Your card will be charged based on your active plan when students are added.'}
+            </p>
+          </div>
+          <div>
+            <label className="block text-[13px] font-[500] text-[#3f3f3f] mb-1.5">Cardholder Name</label>
+            <input
+              type="text"
+              placeholder="e.g. Sarah Mitchell"
+              value={paymentForm.cardHolder}
+              onChange={e => setPaymentForm(p => ({ ...p, cardHolder: e.target.value }))}
+              required
+              className="w-full px-3 py-2.5 text-[14px] border border-[#dddddd] rounded-[10px] focus:outline-none focus:border-[#6C3BAA] bg-white transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-[500] text-[#3f3f3f] mb-1.5">Card Number</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="1234 5678 9012 3456"
+                value={paymentForm.cardNumber}
+                onChange={e => setPaymentForm(p => ({ ...p, cardNumber: formatCardNumber(e.target.value) }))}
+                required
+                maxLength={19}
+                className="w-full pl-10 pr-3 py-2.5 text-[14px] font-mono border border-[#dddddd] rounded-[10px] focus:outline-none focus:border-[#6C3BAA] bg-white transition-colors"
+              />
+              <CreditCard size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#929292]" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[13px] font-[500] text-[#3f3f3f] mb-1.5">Expiry Date</label>
+              <input
+                type="text"
+                placeholder="MM/YY"
+                value={paymentForm.expiry}
+                onChange={e => setPaymentForm(p => ({ ...p, expiry: formatExpiry(e.target.value) }))}
+                required
+                maxLength={5}
+                className="w-full px-3 py-2.5 text-[14px] font-mono border border-[#dddddd] rounded-[10px] focus:outline-none focus:border-[#6C3BAA] bg-white transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-[13px] font-[500] text-[#3f3f3f] mb-1.5">CVV</label>
+              <input
+                type="password"
+                placeholder="•••"
+                value={paymentForm.cvv}
+                onChange={e => setPaymentForm(p => ({ ...p, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                required
+                maxLength={4}
+                className="w-full px-3 py-2.5 text-[14px] font-mono border border-[#dddddd] rounded-[10px] focus:outline-none focus:border-[#6C3BAA] bg-white transition-colors"
+              />
+            </div>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── Add Student Modal ── */}
       <Modal

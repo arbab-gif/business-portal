@@ -10,20 +10,17 @@ import { Modal } from '@/components/ui/Modal';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import { Input, Select } from '@/components/ui/Input';
 import { STUDENTS, STUDENT_PROGRESS, Student } from '@/lib/data';
+import { ProgressTabs } from '@/components/ui/ProgressTabs';
 import {
   ArrowLeft, CheckCircle, XCircle, TrendingUp,
-  ClipboardList, AlertTriangle, BookOpen, Target,
+  ClipboardList, AlertTriangle, Target,
   Mail, Calendar, Package, Pencil, AlertCircle, Trash2, UserX, UserCheck, KeyRound,
 } from 'lucide-react';
-
-type Tab = 'mock' | 'hazard' | 'categories';
 
 const MOCK_PASS   = 43; const MOCK_TOTAL   = 50;
 const HAZARD_PASS = 44; const HAZARD_TOTAL = 75;
 
 const pct        = (n: number, total: number) => Math.round((n / total) * 100);
-const scoreColor = (score: number, pass: number) =>
-  score >= pass ? '#008a05' : score >= pass * 0.85 ? '#c47a00' : '#c13515';
 
 const VEHICLE_TYPES = [
   { value: 'Car',                     label: 'Car' },
@@ -36,8 +33,6 @@ const VEHICLE_TYPES = [
 export default function StudentProgressPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>('mock');
-
   // local editable copy of the student
   const [student, setStudent] = useState<Student | undefined>(
     () => STUDENTS.find(s => s.id === id)
@@ -97,12 +92,6 @@ export default function StudentProgressPage() {
   const mockPassRate    = mockTests.length ? Math.round((mockPassCount / mockTests.length) * 100) : null;
   const latestHazard    = hazardTests[0]?.score ?? null;
   const hazardPassCount = hazardTests.filter(t => t.passed).length;
-
-  const TABS: { value: Tab; label: string; count: number }[] = [
-    { value: 'mock',       label: 'Mock Test Results',  count: mockTests.length },
-    { value: 'hazard',     label: 'Hazard Perception',  count: hazardTests.length },
-    { value: 'categories', label: 'Category Summary',   count: categories.length },
-  ];
 
   /* ── open edit modal ── */
   const openEdit = () => {
@@ -261,138 +250,11 @@ export default function StudentProgressPage() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-white border border-[#ebebeb] rounded-full w-fit">
-          {TABS.map(t => (
-            <button
-              key={t.value}
-              onClick={() => setTab(t.value)}
-              className={`px-4 py-1.5 rounded-full text-[13px] font-[500] transition-colors cursor-pointer flex items-center gap-1.5 ${
-                tab === t.value ? 'bg-[#222222] text-white' : 'text-[#6a6a6a] hover:text-[#222222] hover:bg-[#f2f2f2]'
-              }`}
-            >
-              {t.label}
-              <span className={`text-[11px] ${tab === t.value ? 'opacity-70' : 'opacity-60'}`}>{t.count}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* ── Tab: Mock Test Results ── */}
-        {tab === 'mock' && (
-          <div className="bg-white border border-[#ebebeb] rounded-[14px] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#ebebeb] flex items-center justify-between">
-              <div>
-                <h2 className="text-[16px] font-[600] text-[#222222]">Mock Test Results</h2>
-                <p className="text-[12px] text-[#929292] mt-0.5">Pass mark: {MOCK_PASS}/{MOCK_TOTAL} · Last {mockTests.length} attempts</p>
-              </div>
-              <div className="flex items-center gap-3 text-[12px]">
-                <span className="flex items-center gap-1 text-[#008a05] font-[500]"><CheckCircle size={12} /> {mockPassCount} passed</span>
-                <span className="flex items-center gap-1 text-[#c13515] font-[500]"><XCircle size={12} /> {mockTests.length - mockPassCount} failed</span>
-              </div>
-            </div>
-            {mockTests.length === 0 ? (
-              <div className="px-5 py-16 text-center text-[14px] text-[#929292]">No mock test data yet.</div>
-            ) : (
-              <div className="px-5 py-5 space-y-3.5">
-                {mockTests.map((t, i) => {
-                  const p   = pct(t.score, MOCK_TOTAL);
-                  const col = scoreColor(t.score, MOCK_PASS);
-                  return (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="flex-1 h-2.5 bg-[#f2f2f2] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${p}%`, backgroundColor: col }} />
-                      </div>
-                      <span className="text-[13px] font-[600] w-14 text-right flex-shrink-0" style={{ color: col }}>
-                        {t.score}/{MOCK_TOTAL}
-                      </span>
-                      <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-[600] flex-shrink-0 ${t.passed ? 'bg-[#e6f4e6] text-[#008a05]' : 'bg-[#fde8e3] text-[#c13515]'}`}>
-                        {t.passed ? <CheckCircle size={10} /> : <XCircle size={10} />}
-                        {t.passed ? 'Pass' : 'Fail'}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Tab: Hazard Perception ── */}
-        {tab === 'hazard' && (
-          <div className="bg-white border border-[#ebebeb] rounded-[14px] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#ebebeb] flex items-center justify-between">
-              <div>
-                <h2 className="text-[16px] font-[600] text-[#222222]">Hazard Perception Results</h2>
-                <p className="text-[12px] text-[#929292] mt-0.5">Pass mark: {HAZARD_PASS}/{HAZARD_TOTAL} · Last {hazardTests.length} attempts</p>
-              </div>
-              <div className="flex items-center gap-3 text-[12px]">
-                <span className="flex items-center gap-1 text-[#008a05] font-[500]"><CheckCircle size={12} /> {hazardPassCount} passed</span>
-                <span className="flex items-center gap-1 text-[#c13515] font-[500]"><XCircle size={12} /> {hazardTests.length - hazardPassCount} failed</span>
-              </div>
-            </div>
-            {hazardTests.length === 0 ? (
-              <div className="px-5 py-16 text-center text-[14px] text-[#929292]">No hazard test data yet.</div>
-            ) : (
-              <div className="px-5 py-5 space-y-3.5">
-                {hazardTests.map((t, i) => {
-                  const p   = pct(t.score, HAZARD_TOTAL);
-                  const col = scoreColor(t.score, HAZARD_PASS);
-                  return (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="flex-1 h-2.5 bg-[#f2f2f2] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${p}%`, backgroundColor: col }} />
-                      </div>
-                      <span className="text-[13px] font-[600] w-14 text-right flex-shrink-0" style={{ color: col }}>
-                        {t.score}/{HAZARD_TOTAL}
-                      </span>
-                      <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-[600] flex-shrink-0 ${t.passed ? 'bg-[#e6f4e6] text-[#008a05]' : 'bg-[#fde8e3] text-[#c13515]'}`}>
-                        {t.passed ? <CheckCircle size={10} /> : <XCircle size={10} />}
-                        {t.passed ? 'Pass' : 'Fail'}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Tab: Category Summary ── */}
-        {tab === 'categories' && (
-          <div className="bg-white border border-[#ebebeb] rounded-[14px] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#ebebeb]">
-              <h2 className="text-[16px] font-[600] text-[#222222]">Category Summary</h2>
-              <p className="text-[12px] text-[#929292] mt-0.5">Performance breakdown across all question categories</p>
-            </div>
-            {categories.length === 0 ? (
-              <div className="px-5 py-16 text-center text-[14px] text-[#929292]">No category data yet.</div>
-            ) : (
-              <div className="p-5 space-y-4">
-                {categories.map(cat => {
-                  const p   = pct(cat.correct, cat.total);
-                  const col = p >= 80 ? '#008a05' : p >= 60 ? '#c47a00' : '#c13515';
-                  return (
-                    <div key={cat.category}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <BookOpen size={13} className="text-[#6a6a6a] flex-shrink-0" />
-                          <span className="text-[14px] font-[500] text-[#222222]">{cat.category}</span>
-                        </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <span className="text-[13px] text-[#929292]">{cat.correct}/{cat.total} correct</span>
-                          <span className="text-[14px] font-[700] w-10 text-right" style={{ color: col }}>{p}%</span>
-                        </div>
-                      </div>
-                      <div className="h-2.5 bg-[#f2f2f2] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${p}%`, backgroundColor: col }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        <ProgressTabs
+          mockTests={mockTests}
+          hazardTests={hazardTests}
+          categories={categories}
+        />
 
       </div>
 

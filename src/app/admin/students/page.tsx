@@ -5,7 +5,7 @@ import { TopBar } from '@/components/layout/TopBar';
 import { Badge } from '@/components/ui/Badge';
 import { SearchBar } from '@/components/ui/Table';
 import { ConfirmModal, Modal } from '@/components/ui/Modal';
-import { STUDENTS, Student } from '@/lib/data';
+import { STUDENTS, STUDENT_PROGRESS, Student } from '@/lib/data';
 import { KeyRound, UserX, UserCheck, Trash2 } from 'lucide-react';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import Link from 'next/link';
@@ -91,10 +91,10 @@ export default function StudentsPage() {
 
         {/* Table */}
         <div className="overflow-x-auto rounded-[14px] border border-[#ebebeb] bg-white">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-[#ebebeb] bg-[#f7f7f7]">
-                {['Student', 'Business', 'Mock Avg', 'Status', 'Actions'].map(h => (
+                {['Student', 'Business', 'Overall Progress', 'Status', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-[12px] font-[700] text-[#6a6a6a] uppercase tracking-[0.32px]">{h}</th>
                 ))}
               </tr>
@@ -103,58 +103,62 @@ export default function StudentsPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={5} className="px-4 py-12 text-center text-[14px] text-[#929292]">No students found.</td></tr>
               ) : (
-                filtered.map((stu, idx) => (
-                  <tr key={stu.id} className={`border-b border-[#ebebeb] last:border-b-0 hover:bg-[#f7f7f7] transition-colors ${idx % 2 !== 0 ? 'bg-[#fafafa]' : ''}`}>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#f2f2f2] flex items-center justify-center text-[13px] font-[600] text-[#6a6a6a] flex-shrink-0">
-                          {stu.name[0]}
-                        </div>
-                        <div>
-                          <p className="text-[14px] font-[500] text-[#222222]">{stu.name}</p>
-                          <p className="text-[13px] text-[#929292]">{stu.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <Link href={`/admin/businesses/${stu.businessId}`} className="text-[14px] text-[#6C3BAA] hover:underline">
-                        {stu.businessName}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      {stu.mockTestAvg != null ? (
-                        <div className="flex items-center gap-2 min-w-[100px]">
-                          <div className="flex-1 h-1.5 bg-[#ebebeb] rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${stu.mockTestAvg}%`,
-                                backgroundColor: stu.mockTestAvg >= 80 ? '#008a05' : stu.mockTestAvg >= 60 ? '#c47a00' : '#c13515',
-                              }}
-                            />
+                filtered.map((stu) => {
+                  const prog   = STUDENT_PROGRESS.find(p => p.studentId === stu.id);
+                  const catAvg = prog?.categories.length
+                    ? Math.round(prog.categories.reduce((s, c) => s + Math.round((c.correct / c.total) * 100), 0) / prog.categories.length)
+                    : null;
+                  const scores = [stu.mockTestAvg ?? null, stu.hazardScore ?? null, catAvg].filter((v): v is number => v !== null);
+                  const overall = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+                  const barCol  = (v: number) => v >= 80 ? '#008a05' : v >= 60 ? '#c47a00' : '#c13515';
+
+                  return (
+                    <tr key={stu.id} className="border-b border-[#ebebeb] last:border-b-0 hover:bg-[#f7f7f7] transition-colors">
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#f2f2f2] flex items-center justify-center text-[13px] font-[600] text-[#6a6a6a] flex-shrink-0">
+                            {stu.name[0]}
                           </div>
-                          <span className="text-[13px] font-[600] text-[#222222] w-8 text-right">{stu.mockTestAvg}%</span>
+                          <div>
+                            <p className="text-[14px] font-[500] text-[#222222]">{stu.name}</p>
+                            <p className="text-[13px] text-[#929292]">{stu.email}</p>
+                          </div>
                         </div>
-                      ) : (
-                        <span className="text-[14px] text-[#929292]">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <Badge variant={stu.status === 'active' ? 'active' : 'suspended'}>
-                        {stu.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <DropdownMenu items={[
-                        { label: 'Reset Password', icon: <KeyRound size={14} />, onClick: () => { setResetTarget(stu); setResetDone(false); } },
-                        stu.status === 'active'
-                          ? { label: 'Suspend Account', icon: <UserX size={14} />,    onClick: () => setDeactivateTarget(stu), variant: 'warning' as const, dividerBefore: true }
-                          : { label: 'Reactivate',      icon: <UserCheck size={14} />, onClick: () => setReactivateTarget(stu), variant: 'success' as const, dividerBefore: true },
-                        { label: 'Delete', icon: <Trash2 size={14} />, onClick: () => setDeleteTarget(stu), variant: 'danger' as const, dividerBefore: true },
-                      ]} />
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <Link href={`/admin/businesses/${stu.businessId}`} className="text-[14px] text-[#6C3BAA] hover:underline">
+                          {stu.businessName}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {overall != null ? (
+                          <div className="flex items-center gap-3">
+                            <div className="w-28 h-2 bg-[#f2f2f2] rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all" style={{ width: `${overall}%`, backgroundColor: barCol(overall) }} />
+                            </div>
+                            <span className="text-[13px] font-[600] w-8 flex-shrink-0" style={{ color: barCol(overall) }}>{overall}%</span>
+                          </div>
+                        ) : (
+                          <span className="text-[13px] text-[#929292]">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <Badge variant={stu.status === 'active' ? 'active' : 'suspended'}>
+                          {stu.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <DropdownMenu items={[
+                          { label: 'Reset Password', icon: <KeyRound size={14} />, onClick: () => { setResetTarget(stu); setResetDone(false); } },
+                          stu.status === 'active'
+                            ? { label: 'Suspend Account', icon: <UserX size={14} />,    onClick: () => setDeactivateTarget(stu), variant: 'warning' as const, dividerBefore: true }
+                            : { label: 'Reactivate',      icon: <UserCheck size={14} />, onClick: () => setReactivateTarget(stu), variant: 'success' as const, dividerBefore: true },
+                          { label: 'Delete', icon: <Trash2 size={14} />, onClick: () => setDeleteTarget(stu), variant: 'danger' as const, dividerBefore: true },
+                        ]} />
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

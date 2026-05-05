@@ -24,7 +24,7 @@ export default function DashboardPage() {
           <StatCard
             title="Total Businesses"
             value={STATS.totalBusinesses}
-            subtitle={`${STATS.activeBusinesses} active`}
+            subtitle="Registered on platform"
             icon={<Building2 size={18} />}
             color="primary"
           />
@@ -38,7 +38,7 @@ export default function DashboardPage() {
           <StatCard
             title="Total Students"
             value={STATS.totalStudents}
-            subtitle={`${STATS.activeStudents} active`}
+            subtitle="Across all businesses"
             icon={<Users size={18} />}
             color="success"
           />

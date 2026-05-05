@@ -17,8 +17,8 @@ interface FormData {
 const empty: FormData = { businessName: '', contactName: '', email: '', phone: '', address: '' };
 
 const PRESET_COLORS = [
-  '#6C3BAA', '#2563eb', '#0891b2', '#059669',
-  '#d97706', '#dc2626', '#db2777', '#7c3aed',
+  '#4a90d9', '#7b7b7b', '#1a1a1a', '#9b9b9b', '#5a7a6b', '#2a8a8a', '#3a5fa0', '#7a9a2a',
+  '#3a6b3a', '#8b5e3c', '#e8a020', '#6b1a2a', '#8b2a5a', '#e86090', '#4a2a6b', '#5a1a6b',
 ];
 
 export default function SignupPage() {
@@ -31,7 +31,10 @@ export default function SignupPage() {
   const [logoFile, setLogoFile]       = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoDragging, setLogoDragging] = useState(false);
+  const [logoError, setLogoError]     = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2 MB
 
   // brand colour
   const [brandColor, setBrandColor] = useState('#6C3BAA');
@@ -45,7 +48,15 @@ export default function SignupPage() {
 
   /* ── Logo helpers ── */
   const applyLogo = (file: File) => {
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Only image files are accepted (PNG, JPG, SVG).');
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      setLogoError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum size is 2 MB.`);
+      return;
+    }
+    setLogoError('');
     setLogoFile(file);
     const reader = new FileReader();
     reader.onload = e => setLogoPreview(e.target?.result as string);
@@ -67,6 +78,7 @@ export default function SignupPage() {
   const removeLogo = () => {
     setLogoFile(null);
     setLogoPreview(null);
+    setLogoError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -213,6 +225,9 @@ export default function SignupPage() {
                   className="hidden"
                   onChange={handleFileChange}
                 />
+                {logoError && (
+                  <p className="text-[12px] text-[#c13515] mt-1.5">{logoError}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -225,13 +240,15 @@ export default function SignupPage() {
                     error={errors.businessName}
                   />
                 </div>
-                <Input
-                  label="Contact Name *"
-                  placeholder="e.g. Sarah Mitchell"
-                  value={form.contactName}
-                  onChange={set('contactName')}
-                  error={errors.contactName}
-                />
+                <div className="sm:col-span-2">
+                  <Input
+                    label="Contact Name *"
+                    placeholder="e.g. Sarah Mitchell"
+                    value={form.contactName}
+                    onChange={set('contactName')}
+                    error={errors.contactName}
+                  />
+                </div>
                 <Input
                   label="Email Address *"
                   type="email"
@@ -269,10 +286,31 @@ export default function SignupPage() {
               <div>
                 <p className="text-[13px] font-[500] text-[#3f3f3f] mb-2">Brand Colour</p>
                 <div className="p-4 border border-[#ebebeb] rounded-[12px] bg-[#fafafa] space-y-3">
+                  <p className="text-[12px] text-[#929292]">Select from our options, or enter a specific colour value.</p>
 
-                  {/* Presets + Custom button */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-wrap gap-2 flex-1">
+                  {/* Preview circle + swatches grid */}
+                  <div className="flex items-start gap-4">
+
+                    {/* Large preview circle — click to open native picker */}
+                    <div className="relative flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => colorInputRef.current?.click()}
+                        className="w-14 h-14 rounded-full border-[3px] border-white shadow-md cursor-pointer transition-transform hover:scale-105"
+                        style={{ backgroundColor: brandColor }}
+                        title="Click to pick a custom colour"
+                      />
+                      <input
+                        ref={colorInputRef}
+                        type="color"
+                        value={brandColor}
+                        onChange={e => applyColor(e.target.value)}
+                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer pointer-events-none"
+                      />
+                    </div>
+
+                    {/* Swatches — 2 rows of 8 */}
+                    <div className="grid grid-cols-8 gap-1.5">
                       {PRESET_COLORS.map(c => (
                         <button
                           key={c}
@@ -288,38 +326,18 @@ export default function SignupPage() {
                         />
                       ))}
                     </div>
-                    {/* Native colour picker trigger */}
-                    <div className="relative flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => colorInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-[8px] border border-[#dddddd] text-[12px] font-[500] text-[#6a6a6a] hover:border-[#6C3BAA] hover:text-[#6C3BAA] hover:bg-[#f7f4fc] transition-colors cursor-pointer"
-                      >
-                        Custom
-                      </button>
-                      <input
-                        ref={colorInputRef}
-                        type="color"
-                        value={brandColor}
-                        onChange={e => applyColor(e.target.value)}
-                        className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                      />
-                    </div>
                   </div>
 
                   {/* Hex input */}
                   <div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-[6px] flex-shrink-0" style={{ backgroundColor: brandColor }} />
-                      <input
-                        type="text"
-                        value={hexInput}
-                        onChange={handleHexInput}
-                        placeholder="#6C3BAA"
-                        maxLength={7}
-                        className="flex-1 px-3 py-1.5 text-[13px] font-mono border border-[#dddddd] rounded-[8px] focus:outline-none focus:border-[#6C3BAA] bg-white"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      value={hexInput}
+                      onChange={handleHexInput}
+                      placeholder="#6C3BAA"
+                      maxLength={7}
+                      className="w-32 px-3 py-1.5 text-[13px] font-mono border border-[#dddddd] rounded-[8px] focus:outline-none focus:border-[#6C3BAA] bg-white"
+                    />
                     {hexError && <p className="text-[12px] text-[#c13515] mt-1">{hexError}</p>}
                   </div>
                 </div>

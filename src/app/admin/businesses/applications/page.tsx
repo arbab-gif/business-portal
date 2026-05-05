@@ -8,21 +8,29 @@ import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Input';
 import { Business } from '@/lib/data';
 import { useBusinessStore } from '@/lib/BusinessStore';
+import { SearchBar } from '@/components/ui/Table';
 import { CheckCircle, XCircle, Mail, Phone, MapPin, Building2 } from 'lucide-react';
 
 type Tab = 'pending' | 'rejected';
 
 export default function ApplicationsPage() {
   const { businesses, updateBusiness } = useBusinessStore();
-  const [tab, setTab] = useState<Tab>('pending');
+  const [tab, setTab]     = useState<Tab>('pending');
+  const [search, setSearch] = useState('');
   const [reviewTarget, setReviewTarget] = useState<Business | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Business | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [approveTarget, setApproveTarget] = useState<Business | null>(null);
   const [toast, setToast] = useState<{ type: 'approve' | 'reject'; name: string } | null>(null);
 
-  const pending = businesses.filter(b => b.status === 'pending');
-  const rejected = businesses.filter(b => b.status === 'rejected');
+  const q = search.toLowerCase();
+  const matches = (b: Business) =>
+    b.name.toLowerCase().includes(q) ||
+    b.email.toLowerCase().includes(q) ||
+    b.contactName.toLowerCase().includes(q);
+
+  const pending  = businesses.filter(b => b.status === 'pending'  && matches(b));
+  const rejected = businesses.filter(b => b.status === 'rejected' && matches(b));
 
   const showToast = (type: 'approve' | 'reject', name: string) => {
     setToast({ type, name });
@@ -60,8 +68,10 @@ export default function ApplicationsPage() {
       />
       <div className="p-6 space-y-5">
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-white border border-[#ebebeb] rounded-full w-fit">
+        {/* Search + Tabs — single row */}
+        <div className="flex items-center gap-3">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search by name, email or contact…" />
+          <div className="flex items-center gap-1 p-1 bg-white border border-[#ebebeb] rounded-full flex-shrink-0">
           {([
             { value: 'pending', label: 'Pending', count: pending.length },
             { value: 'rejected', label: 'Rejected', count: rejected.length },
@@ -77,6 +87,10 @@ export default function ApplicationsPage() {
               <span className={`text-[11px] ${tab === t.value ? 'opacity-70' : 'opacity-60'}`}>{t.count}</span>
             </button>
           ))}
+          </div>
+          <span className="text-[13px] text-[#929292] ml-auto">
+            {(tab === 'pending' ? pending : rejected).length} results
+          </span>
         </div>
 
         {/* Pending tab */}

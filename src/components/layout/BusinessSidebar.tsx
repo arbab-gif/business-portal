@@ -3,29 +3,36 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Users, Building2, LogOut, CreditCard } from 'lucide-react';
+import { Users, Building2, LogOut, CreditCard, LayoutDashboard } from 'lucide-react';
+import { useBusinessAuth } from '@/lib/BusinessAuthStore';
+import { DrivingLogo } from '@/components/ui/DrivingLogo';
 
 const NAV = [
-  { label: 'Students',         href: '/business/students', icon: <Users size={18} /> },
-  { label: 'Profile',          href: '/business/profile',  icon: <Building2 size={18} /> },
-  { label: 'Billing & Account', href: '/business/billing',  icon: <CreditCard size={18} /> },
+  { label: 'Dashboard', href: '/business/dashboard', icon: <LayoutDashboard size={18} /> },
+  { label: 'Students',  href: '/business/students',  icon: <Users size={18} /> },
+  { label: 'Billing',   href: '/business/billing',   icon: <CreditCard size={18} /> },
+  { label: 'Profile',   href: '/business/profile',   icon: <Building2 size={18} /> },
 ];
 
 export function BusinessSidebar() {
   const pathname = usePathname();
+  const { currentBusiness } = useBusinessAuth();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
-  return (
-    <aside className="w-56 min-h-screen flex flex-col flex-shrink-0" style={{ backgroundColor: '#6C3BAA' }}>
+  const brandColor = currentBusiness.brandColor || '#6C3BAA';
 
-      {/* Logo — matches admin */}
+  return (
+    <aside className="w-56 min-h-screen flex flex-col flex-shrink-0" style={{ backgroundColor: brandColor }}>
+
+      {/* Business logo / name */}
       <div className="px-5 py-6 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-white/20 rounded-[12px] flex items-center justify-center">
-            <Building2 size={16} className="text-white" />
+          {/* Always show the Driving Logo SVG in white — sits on the brand-colour background */}
+          <div className="w-9 h-9 bg-white/15 rounded-[10px] flex items-center justify-center flex-shrink-0">
+            <DrivingLogo size={22} color="white" />
           </div>
-          <div>
-            <p className="text-[16px] font-[600] text-white leading-[1.25]">Business Portal</p>
+          <div className="min-w-0">
+            <p className="text-[14px] font-[600] text-white leading-[1.25] truncate">{currentBusiness.name}</p>
             <p className="text-[11px] text-white/50 leading-[1.18]">Student Management</p>
           </div>
         </div>
@@ -51,17 +58,8 @@ export function BusinessSidebar() {
         ))}
       </nav>
 
-      {/* Footer — matches admin */}
+      {/* Footer */}
       <div className="px-3 pb-4 border-t border-white/10 pt-3">
-        <div className="flex items-center gap-3 px-3 py-2.5 mb-1">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white text-[13px] font-[600]">
-            S
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-[500] text-white truncate">Sarah Mitchell</p>
-            <p className="text-[11px] text-white/50 truncate">admin@driveright.co.uk</p>
-          </div>
-        </div>
         <Link
           href="/login"
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[12px] text-[13px] text-white/60 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
