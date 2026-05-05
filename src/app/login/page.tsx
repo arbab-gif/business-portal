@@ -52,7 +52,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 bg-[#6C3BAA] rounded-[14px] flex items-center justify-center mb-3">
-            {selected.icon && React.cloneElement(selected.icon as React.ReactElement, { className: 'text-white' })}
+            {selected.icon && React.cloneElement(selected.icon as React.ReactElement<{ className?: string }>, { className: 'text-white' })}
           </div>
           <h1 className="text-[22px] font-[600] text-[#222222] leading-[1.18] tracking-[-0.44px]">
             Business Portal
