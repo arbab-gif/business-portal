@@ -12,7 +12,7 @@ import {
 } from '@/lib/adminBillingData';
 import {
   PoundSterling, AlertTriangle, XCircle, CheckCircle,
-  CreditCard, ChevronRight, Eye, Building2, TrendingUp,
+  CreditCard, ChevronRight, Eye, Building2,
 } from 'lucide-react';
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
@@ -153,42 +153,6 @@ export default function AdminBillingPage() {
             </div>
           </section>
         )}
-
-        {/* ── Revenue Trend (mini bar chart) ── */}
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp size={14} className="text-[#6a6a6a]" />
-            <h2 className="text-[13px] font-[700] text-[#222222] uppercase tracking-[0.4px]">Monthly Revenue</h2>
-            <span className="text-[12px] text-[#929292]">Last 6 months · all accounts</span>
-          </div>
-          <div className="bg-white border border-[#ebebeb] rounded-[14px] p-5">
-            {(() => {
-              const months = [
-                { label: 'Nov', total: 225 + 95 + 50 + 0 },
-                { label: 'Dec', total: 240 + 105 + 55 + 0 },
-                { label: 'Jan', total: 140 + 90 + 75 + 250 },
-                { label: 'Feb', total: 165 + 100 + 65 + 260 },
-                { label: 'Mar', total: 155 + 120 + 70 + 275 },
-                { label: 'Apr', total: 180 + 110 + 0 + 290 },
-              ];
-              const max = Math.max(...months.map(m => m.total));
-              return (
-                <div className="flex items-end gap-3 h-24">
-                  {months.map((m, i) => (
-                    <div key={m.label} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-[11px] font-[600] text-[#222222]">{fmt(m.total)}</span>
-                      <div className="w-full rounded-t-[4px] transition-all" style={{
-                        height: `${Math.max(8, (m.total / max) * 64)}px`,
-                        backgroundColor: i === months.length - 1 ? '#6C3BAA' : '#ede5f7',
-                      }} />
-                      <span className="text-[11px] text-[#929292]">{m.label}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        </section>
 
         {/* ── All Businesses Billing Table ── */}
         <section>
