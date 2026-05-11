@@ -6,9 +6,19 @@ import { TopBar } from '@/components/layout/TopBar';
 import { StatCard } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import {
-  Building2, Users, ClipboardCheck, AlertTriangle, ChevronRight,
+  Building2, Users, ClipboardCheck, AlertTriangle, ChevronRight, TrendingUp,
 } from 'lucide-react';
 import { BUSINESSES, STUDENTS, STATS } from '@/lib/data';
+
+const MONTHLY_REVENUE = [
+  { label: 'Nov', total: 225 + 95 + 50 },
+  { label: 'Dec', total: 240 + 105 + 55 },
+  { label: 'Jan', total: 140 + 90 + 75 + 250 },
+  { label: 'Feb', total: 165 + 100 + 65 + 260 },
+  { label: 'Mar', total: 155 + 120 + 70 + 275 },
+  { label: 'Apr', total: 180 + 110 + 290 },
+];
+const fmt = (n: number) => `£${n.toFixed(0)}`;
 
 export default function DashboardPage() {
   const pending = BUSINESSES.filter(b => b.status === 'pending');
@@ -114,6 +124,37 @@ export default function DashboardPage() {
             </ul>
           </div>
 
+        </div>
+
+        {/* Monthly Revenue chart */}
+        <div className="bg-white border border-[#ebebeb] rounded-[14px] p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} className="text-[#6a6a6a]" />
+              <h2 className="text-[16px] font-[600] text-[#222222]">Monthly Revenue</h2>
+              <span className="text-[13px] text-[#929292]">Last 6 months · all accounts</span>
+            </div>
+            <Link href="/admin/billing" className="text-[13px] text-[#6C3BAA] hover:underline font-[500] flex items-center gap-1">
+              Full billing <ChevronRight size={13} />
+            </Link>
+          </div>
+          {(() => {
+            const max = Math.max(...MONTHLY_REVENUE.map(m => m.total));
+            return (
+              <div className="flex items-end gap-3 h-28">
+                {MONTHLY_REVENUE.map((m, i) => (
+                  <div key={m.label} className="flex-1 flex flex-col items-center gap-1.5">
+                    <span className="text-[11px] font-[600] text-[#222222]">{fmt(m.total)}</span>
+                    <div className="w-full rounded-t-[4px] transition-all" style={{
+                      height: `${Math.max(8, (m.total / max) * 72)}px`,
+                      backgroundColor: i === MONTHLY_REVENUE.length - 1 ? '#6C3BAA' : '#ede5f7',
+                    }} />
+                    <span className="text-[11px] text-[#929292]">{m.label}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* All businesses summary */}
