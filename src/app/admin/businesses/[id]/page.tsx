@@ -492,7 +492,7 @@ export default function BusinessDetailPage() {
                   <table className="w-full min-w-[700px]">
                     <thead>
                       <tr className="border-b border-[#ebebeb] bg-[#f7f7f7]">
-                        {['Invoice', 'Date', 'Due Date', 'Students', 'Amount', 'Status', ''].map(h => (
+                        {['Invoice', 'Date', 'Due Date', 'Students', 'Amount', 'Status'].map(h => (
                           <th key={h} className="px-5 py-3 text-left text-[12px] font-[700] text-[#6a6a6a] uppercase tracking-[0.32px]">{h}</th>
                         ))}
                       </tr>
@@ -513,14 +513,6 @@ export default function BusinessDetailPage() {
                               <span className={`inline-flex items-center gap-1 text-[12px] font-[600] px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>
                                 {cfg.label}
                               </span>
-                            </td>
-                            <td className="px-5 py-3.5">
-                              {inv.status === 'paid' && inv.paidDate && (
-                                <p className="text-[12px] text-[#929292]">Paid {fmtDate(inv.paidDate)}</p>
-                              )}
-                              {inv.failedReason && (
-                                <p className="text-[12px] text-[#c13515]">{inv.failedReason}</p>
-                              )}
                             </td>
                           </tr>
                         );
