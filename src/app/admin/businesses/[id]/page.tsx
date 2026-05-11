@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { TopBar } from '@/components/layout/TopBar';
 import { Badge } from '@/components/ui/Badge';
@@ -12,9 +12,13 @@ import { STUDENTS, STUDENT_PROGRESS, Student } from '@/lib/data';
 import { useBusinessStore } from '@/lib/BusinessStore';
 import { DropdownMenu } from '@/components/ui/DropdownMenu';
 import {
+  getBusinessInvoices, getBusinessAlerts, getBillingSummary,
+} from '@/lib/adminBillingData';
+import {
   ArrowLeft, Mail, Phone, MapPin, Building2, Users,
   AlertTriangle, ShieldOff, ShieldCheck, Clock,
   KeyRound, UserX, UserCheck, Trash2, Pencil, Lock, Upload, X,
+  CreditCard, CheckCircle, XCircle,
 } from 'lucide-react';
 
 const PRESET_COLORS = [
@@ -25,41 +29,66 @@ const PRESET_COLORS = [
 ];
 const MAX_LOGO = 2 * 1024 * 1024;
 
+/* ── billing helpers ───────────────────────────────────────────────────────── */
+const fmt     = (n: number) => `£${n.toFixed(2)}`;
+const fmtDate = (d?: string | null) =>
+  d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+const INV_STATUS: Record<string, { label: string; bg: string; text: string }> = {
+  paid:    { label: 'Paid',    bg: 'bg-[#e6f4e6]', text: 'text-[#008a05]' },
+  overdue: { label: 'Overdue', bg: 'bg-[#fff3cd]', text: 'text-[#c47a00]' },
+  failed:  { label: 'Failed',  bg: 'bg-[#fde8e3]', text: 'text-[#c13515]' },
+  pending: { label: 'Pending', bg: 'bg-[#f2f2f2]',  text: 'text-[#6a6a6a]' },
+};
+
+const ALERT_CFG = {
+  payment_failed:  { bg: 'bg-[#fde8e3]', border: 'border-[#c13515]/20', icon: 'text-[#c13515]' },
+  payment_declined:{ bg: 'bg-[#fde8e3]', border: 'border-[#c13515]/20', icon: 'text-[#c13515]' },
+  card_expired:    { bg: 'bg-[#fde8e3]', border: 'border-[#c13515]/20', icon: 'text-[#c13515]' },
+  overdue:         { bg: 'bg-[#fff3cd]', border: 'border-[#c47a00]/20', icon: 'text-[#c47a00]' },
+  card_expiring:   { bg: 'bg-[#fff3cd]', border: 'border-[#c47a00]/20', icon: 'text-[#c47a00]' },
+};
+
 export default function BusinessDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id }           = useParams<{ id: string }>();
+  const searchParams     = useSearchParams();
+  const initialTab       = searchParams.get('tab') === 'billing' ? 'billing' : 'overview';
 
   const { businesses, updateBusiness } = useBusinessStore();
   const business = businesses.find(b => b.id === id);
 
-  // business actions
-  const [suspendOpen, setSuspendOpen]     = useState(false);
-  const [reinstateOpen, setReinstateOpen] = useState(false);
-  const [suspendNote, setSuspendNote]     = useState('');
+  /* ── tab state ── */
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'billing'>(initialTab as 'overview' | 'students' | 'billing');
 
-  // student state — mirroring the all-students list
-  const [localStudents, setLocalStudents] = useState<Student[]>(() => STUDENTS);
-  const [deleteTarget, setDeleteTarget]         = useState<Student | null>(null);
-  const [deactivateTarget, setDeactivateTarget] = useState<Student | null>(null);
-  const [reactivateTarget, setReactivateTarget] = useState<Student | null>(null);
-  const [resetTarget, setResetTarget]           = useState<Student | null>(null);
-  const [resetDone, setResetDone]               = useState(false);
+  /* ── business actions ── */
+  const [suspendOpen,   setSuspendOpen]   = useState(false);
+  const [reinstateOpen, setReinstateOpen] = useState(false);
+  const [suspendNote,   setSuspendNote]   = useState('');
+
+  /* ── student state ── */
+  const [localStudents, setLocalStudents]       = useState<Student[]>(() => STUDENTS);
+  const [deleteTarget,    setDeleteTarget]       = useState<Student | null>(null);
+  const [deactivateTarget,setDeactivateTarget]  = useState<Student | null>(null);
+  const [reactivateTarget,setReactivateTarget]  = useState<Student | null>(null);
+  const [resetTarget,     setResetTarget]        = useState<Student | null>(null);
+  const [resetDone,       setResetDone]          = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  // edit modal state
-  const [editOpen, setEditOpen]           = useState(false);
-  const [saving,   setSaving]             = useState(false);
-  const [eName,        setEName]          = useState('');
-  const [eContact,     setEContact]       = useState('');
-  const [ePhone,       setEPhone]         = useState('');
-  const [eAddress,     setEAddress]       = useState('');
-  const [eColor,       setEColor]         = useState('#6C3BAA');
-  const [eHexInput,    setEHexInput]      = useState('#6C3BAA');
-  const [eHexError,    setEHexError]      = useState('');
-  const [eLogo,        setELogo]          = useState<string | null>(null);
-  const [eLogoDragging,setELogoDragging]  = useState(false);
-  const [eLogoError,   setELogoError]     = useState('');
+  /* ── edit modal state ── */
+  const [editOpen,      setEditOpen]    = useState(false);
+  const [saving,        setSaving]      = useState(false);
+  const [eName,         setEName]       = useState('');
+  const [eContact,      setEContact]    = useState('');
+  const [ePhone,        setEPhone]      = useState('');
+  const [eAddress,      setEAddress]    = useState('');
+  const [eColor,        setEColor]      = useState('#6C3BAA');
+  const [eHexInput,     setEHexInput]   = useState('#6C3BAA');
+  const [eHexError,     setEHexError]   = useState('');
+  const [eLogo,         setELogo]       = useState<string | null>(null);
+  const [eLogoDragging, setELogoDragging] = useState(false);
+  const [eLogoError,    setELogoError]  = useState('');
 
   const eFileRef  = useRef<HTMLInputElement>(null);
   const eColorRef = useRef<HTMLInputElement>(null);
@@ -72,9 +101,9 @@ export default function BusinessDetailPage() {
     reader.onload = e => setELogo(e.target?.result as string);
     reader.readAsDataURL(file);
   };
-  const removeELogo = () => { setELogo(null); setELogoError(''); if (eFileRef.current) eFileRef.current.value = ''; };
-  const applyEColor = (hex: string) => { setEColor(hex); setEHexInput(hex); setEHexError(''); };
-  const handleEHex  = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const removeELogo  = () => { setELogo(null); setELogoError(''); if (eFileRef.current) eFileRef.current.value = ''; };
+  const applyEColor  = (hex: string) => { setEColor(hex); setEHexInput(hex); setEHexError(''); };
+  const handleEHex   = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setEHexInput(val);
     if (/^#[0-9A-Fa-f]{6}$/.test(val)) { setEColor(val); setEHexError(''); }
@@ -99,12 +128,12 @@ export default function BusinessDetailPage() {
     setSaving(true);
     await new Promise(r => setTimeout(r, 700));
     updateBusiness(id, {
-      name: eName.trim(),
+      name:       eName.trim(),
       contactName: eContact.trim(),
-      phone: ePhone.trim(),
-      address: eAddress.trim(),
+      phone:      ePhone.trim(),
+      address:    eAddress.trim(),
       brandColor: eColor,
-      logoUrl: eLogo ?? undefined,
+      logoUrl:    eLogo ?? undefined,
     });
     setSaving(false);
     setEditOpen(false);
@@ -124,7 +153,12 @@ export default function BusinessDetailPage() {
 
   const students = localStudents.filter(s => s.businessId === business.id);
 
-  // business handlers
+  /* ── billing data ── */
+  const invoices = getBusinessInvoices(business.id);
+  const alerts   = getBusinessAlerts(business.id);
+  const summary  = getBillingSummary(business.id);
+
+  /* ── business handlers ── */
   const handleSuspend = () => {
     updateBusiness(id, { status: 'suspended', suspendedAt: new Date().toISOString().split('T')[0], notes: suspendNote || business?.notes });
     setSuspendOpen(false);
@@ -137,7 +171,7 @@ export default function BusinessDetailPage() {
     showToast(`${business?.name} has been reinstated.`);
   };
 
-  // student handlers
+  /* ── student handlers ── */
   const handleDelete = () => {
     if (!deleteTarget) return;
     setLocalStudents(prev => prev.filter(s => s.id !== deleteTarget.id));
@@ -159,11 +193,16 @@ export default function BusinessDetailPage() {
     setReactivateTarget(null);
   };
 
-  const handleResetPassword = () => {
-    setResetDone(true);
-  };
+  const handleResetPassword = () => { setResetDone(true); };
 
   const statusBadge = business.status as 'active' | 'suspended' | 'pending' | 'rejected';
+
+  /* ── tabs config ── */
+  const TABS = [
+    { key: 'overview',  label: 'Overview' },
+    { key: 'students',  label: `Students (${students.length})` },
+    { key: 'billing',   label: 'Billing' },
+  ] as const;
 
   return (
     <>
@@ -207,59 +246,108 @@ export default function BusinessDetailPage() {
           </div>
         )}
 
-        <div className="space-y-5">
+        {/* ── Tab bar ── */}
+        <div className="flex items-center gap-1 border-b border-[#ebebeb]">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-[14px] font-[500] border-b-2 -mb-px transition-colors cursor-pointer ${
+                activeTab === tab.key
+                  ? 'border-[#6C3BAA] text-[#6C3BAA]'
+                  : 'border-transparent text-[#6a6a6a] hover:text-[#222222]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {/* Business info */}
-          <Card>
-            {/* Card header */}
-            <div className="flex items-start justify-between mb-5">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-[#ede5f7] flex items-center justify-center text-[22px] font-[600] text-[#6C3BAA] flex-shrink-0">
-                  {business.name[0]}
-                </div>
-                <div>
-                  <h2 className="text-[20px] font-[600] text-[#222222]">{business.name}</h2>
-                  <p className="text-[13px] text-[#929292]">Account ID: {business.id}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Badge variant={statusBadge}>{business.status.charAt(0).toUpperCase() + business.status.slice(1)}</Badge>
-                <button
-                  onClick={openEdit}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] border border-[#dddddd] text-[13px] font-[500] text-[#3f3f3f] hover:border-[#6C3BAA] hover:text-[#6C3BAA] hover:bg-[#faf8ff] transition-colors cursor-pointer"
-                >
-                  <Pencil size={12} /> Edit
-                </button>
-              </div>
-            </div>
-
-            {/* View mode */}
-            <div className="grid grid-cols-4 gap-x-6 gap-y-5">
-              {[
-                { icon: <Mail      size={15} />, label: 'Email',        value: business.email },
-                { icon: <Phone     size={15} />, label: 'Phone',        value: business.phone },
-                { icon: <Building2 size={15} />, label: 'Contact',      value: business.contactName },
-                { icon: <Clock     size={15} />, label: 'Member Since', value: business.createdAt || '—' },
-              ].map(item => (
-                <div key={item.label} className="flex items-start gap-3">
-                  <span className="text-[#6a6a6a] mt-0.5 flex-shrink-0">{item.icon}</span>
+        {/* ── OVERVIEW TAB ── */}
+        {activeTab === 'overview' && (
+          <div className="space-y-5">
+            <Card>
+              {/* Card header */}
+              <div className="flex items-start justify-between mb-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-[#ede5f7] flex items-center justify-center text-[22px] font-[600] text-[#6C3BAA] flex-shrink-0">
+                    {business.name[0]}
+                  </div>
                   <div>
-                    <p className="text-[12px] font-[700] text-[#929292] uppercase tracking-[0.32px]">{item.label}</p>
-                    <p className="text-[14px] text-[#222222]">{item.value}</p>
+                    <h2 className="text-[20px] font-[600] text-[#222222]">{business.name}</h2>
+                    <p className="text-[13px] text-[#929292]">Account ID: {business.id}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-            <div className="flex items-start gap-3 mt-5">
-              <span className="text-[#6a6a6a] mt-0.5 flex-shrink-0"><MapPin size={15} /></span>
-              <div>
-                <p className="text-[12px] font-[700] text-[#929292] uppercase tracking-[0.32px]">Address</p>
-                <p className="text-[14px] text-[#222222]">{business.address}</p>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Badge variant={statusBadge}>{business.status.charAt(0).toUpperCase() + business.status.slice(1)}</Badge>
+                  <button
+                    onClick={openEdit}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] border border-[#dddddd] text-[13px] font-[500] text-[#3f3f3f] hover:border-[#6C3BAA] hover:text-[#6C3BAA] hover:bg-[#faf8ff] transition-colors cursor-pointer"
+                  >
+                    <Pencil size={12} /> Edit
+                  </button>
+                </div>
               </div>
-            </div>
-          </Card>
 
-          {/* Students list */}
+              {/* View mode */}
+              <div className="grid grid-cols-4 gap-x-6 gap-y-5">
+                {[
+                  { icon: <Mail      size={15} />, label: 'Email',        value: business.email },
+                  { icon: <Phone     size={15} />, label: 'Phone',        value: business.phone },
+                  { icon: <Building2 size={15} />, label: 'Contact',      value: business.contactName },
+                  { icon: <Clock     size={15} />, label: 'Member Since', value: business.createdAt || '—' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-start gap-3">
+                    <span className="text-[#6a6a6a] mt-0.5 flex-shrink-0">{item.icon}</span>
+                    <div>
+                      <p className="text-[12px] font-[700] text-[#929292] uppercase tracking-[0.32px]">{item.label}</p>
+                      <p className="text-[14px] text-[#222222]">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-start gap-3 mt-5">
+                <span className="text-[#6a6a6a] mt-0.5 flex-shrink-0"><MapPin size={15} /></span>
+                <div>
+                  <p className="text-[12px] font-[700] text-[#929292] uppercase tracking-[0.32px]">Address</p>
+                  <p className="text-[14px] text-[#222222]">{business.address}</p>
+                </div>
+              </div>
+            </Card>
+
+            {/* Billing summary card */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={16} className="text-[#6a6a6a]" />
+                  <h3 className="text-[16px] font-[600] text-[#222222]">Billing Summary</h3>
+                </div>
+                <button
+                  onClick={() => setActiveTab('billing')}
+                  className="text-[13px] font-[500] text-[#6C3BAA] hover:underline cursor-pointer"
+                >
+                  View full billing →
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Paid', value: fmt(summary.totalPaid), color: '#008a05' },
+                  { label: 'Outstanding', value: fmt(summary.outstanding), color: summary.outstanding > 0 ? '#c13515' : '#222222' },
+                  { label: 'Last Payment', value: fmtDate(summary.lastPaymentDate), color: '#222222' },
+                  { label: 'Alerts', value: String(summary.alertCount), color: summary.alertCount > 0 ? '#c47a00' : '#222222' },
+                ].map(item => (
+                  <div key={item.label} className="bg-[#f7f7f7] rounded-[12px] px-4 py-3">
+                    <p className="text-[11px] font-[700] text-[#929292] uppercase tracking-[0.32px] mb-1">{item.label}</p>
+                    <p className="text-[18px] font-[700]" style={{ color: item.color }}>{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* ── STUDENTS TAB ── */}
+        {activeTab === 'students' && (
           <Card padding="none">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#ebebeb]">
               <div className="flex items-center gap-2">
@@ -337,8 +425,114 @@ export default function BusinessDetailPage() {
               </div>
             )}
           </Card>
+        )}
 
-        </div>
+        {/* ── BILLING TAB ── */}
+        {activeTab === 'billing' && (
+          <div className="space-y-5">
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: 'Total Paid', value: fmt(summary.totalPaid), sub: 'All time', icon: <CheckCircle size={18} className="text-[#008a05]" />, bg: 'bg-[#e6f4e6]' },
+                { label: 'Outstanding', value: fmt(summary.outstanding), sub: summary.outstanding > 0 ? 'Requires attention' : 'All clear', icon: <XCircle size={18} className={summary.outstanding > 0 ? 'text-[#c13515]' : 'text-[#6a6a6a]'} />, bg: summary.outstanding > 0 ? 'bg-[#fde8e3]' : 'bg-[#f2f2f2]' },
+                { label: 'Active Alerts', value: String(summary.alertCount), sub: summary.alertCount > 0 ? 'Needs review' : 'No issues', icon: <AlertTriangle size={18} className={summary.alertCount > 0 ? 'text-[#c47a00]' : 'text-[#6a6a6a]'} />, bg: summary.alertCount > 0 ? 'bg-[#fff3cd]' : 'bg-[#f2f2f2]' },
+              ].map(item => (
+                <Card key={item.label}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 ${item.bg} rounded-[10px] flex items-center justify-center flex-shrink-0`}>
+                      {item.icon}
+                    </div>
+                    <div>
+                      <p className="text-[12px] font-[700] text-[#929292] uppercase tracking-[0.32px]">{item.label}</p>
+                      <p className="text-[22px] font-[700] text-[#222222] leading-tight">{item.value}</p>
+                      <p className="text-[12px] text-[#929292] mt-0.5">{item.sub}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Alerts */}
+            {alerts.length > 0 && (
+              <Card>
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertTriangle size={16} className="text-[#c47a00]" />
+                  <h3 className="text-[16px] font-[600] text-[#222222]">Payment Alerts</h3>
+                </div>
+                <div className="space-y-3">
+                  {alerts.map(alert => {
+                    const cfg = ALERT_CFG[alert.type] ?? ALERT_CFG.overdue;
+                    return (
+                      <div key={alert.id} className={`flex items-start gap-3 ${cfg.bg} border ${cfg.border} rounded-[12px] px-4 py-3`}>
+                        <AlertTriangle size={16} className={`${cfg.icon} flex-shrink-0 mt-0.5`} />
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-[600] text-[#222222]">{alert.title}</p>
+                          <p className="text-[13px] text-[#3f3f3f] mt-0.5">{alert.message}</p>
+                          <p className="text-[12px] text-[#929292] mt-1">{fmtDate(alert.date)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Invoice history */}
+            <Card padding="none">
+              <div className="flex items-center gap-2 px-5 py-4 border-b border-[#ebebeb]">
+                <CreditCard size={16} className="text-[#6a6a6a]" />
+                <h3 className="text-[16px] font-[600] text-[#222222]">Invoice History</h3>
+                <span className="text-[13px] text-[#929292]">({invoices.length})</span>
+              </div>
+              {invoices.length === 0 ? (
+                <div className="px-5 py-10 text-center text-[14px] text-[#929292]">No invoices found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px]">
+                    <thead>
+                      <tr className="border-b border-[#ebebeb] bg-[#f7f7f7]">
+                        {['Invoice', 'Date', 'Due Date', 'Students', 'Amount', 'Status', ''].map(h => (
+                          <th key={h} className="px-5 py-3 text-left text-[12px] font-[700] text-[#6a6a6a] uppercase tracking-[0.32px]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoices.map(inv => {
+                        const cfg = INV_STATUS[inv.status] ?? INV_STATUS.pending;
+                        return (
+                          <tr key={inv.id} className="border-b border-[#ebebeb] last:border-b-0 hover:bg-[#f7f7f7] transition-colors">
+                            <td className="px-5 py-3.5">
+                              <p className="text-[14px] font-[500] text-[#222222]">{inv.number}</p>
+                            </td>
+                            <td className="px-5 py-3.5 text-[14px] text-[#3f3f3f]">{fmtDate(inv.date)}</td>
+                            <td className="px-5 py-3.5 text-[14px] text-[#3f3f3f]">{fmtDate(inv.dueDate)}</td>
+                            <td className="px-5 py-3.5 text-[14px] text-[#3f3f3f]">{inv.students}</td>
+                            <td className="px-5 py-3.5 text-[14px] font-[600] text-[#222222]">{fmt(inv.amountRaw)}</td>
+                            <td className="px-5 py-3.5">
+                              <span className={`inline-flex items-center gap-1 text-[12px] font-[600] px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>
+                                {cfg.label}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              {inv.status === 'paid' && inv.paidDate && (
+                                <p className="text-[12px] text-[#929292]">Paid {fmtDate(inv.paidDate)}</p>
+                              )}
+                              {inv.failedReason && (
+                                <p className="text-[12px] text-[#c13515]">{inv.failedReason}</p>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+
       </div>
 
       {/* ── Edit Business modal ── */}
@@ -516,7 +710,7 @@ export default function BusinessDetailPage() {
         variant="danger"
         message={
           <>
-            This will <strong>permanently delete</strong> {deleteTarget?.name}'s account and all associated data. This action <strong>cannot be undone</strong>.
+            This will <strong>permanently delete</strong> {deleteTarget?.name}&apos;s account and all associated data. This action <strong>cannot be undone</strong>.
           </>
         }
       />

@@ -8,6 +8,7 @@ import {
   Building2,
   ClipboardCheck,
   Users,
+  CreditCard,
   LogOut,
   ShieldCheck,
 } from 'lucide-react';
@@ -41,6 +42,11 @@ const NAV: NavItem[] = [
     href: '/admin/students',
     icon: <Users size={18} />,
   },
+  {
+    label: 'Billing',
+    href: '/admin/billing',
+    icon: <CreditCard size={18} />,
+  },
 ];
 
 export function Sidebar() {
@@ -48,7 +54,7 @@ export function Sidebar() {
 
   const isActive = (href: string) =>
     pathname === href ||
-    (href !== '/admin/businesses' && pathname.startsWith(href + '/')) ||
+    (href !== '/admin/businesses' && href !== '/admin/billing' && pathname.startsWith(href + '/')) ||
     (href === '/admin/businesses' && pathname === '/admin/businesses');
 
   return (
